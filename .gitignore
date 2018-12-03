@@ -1,0 +1,25 @@
+
+# local nuget cache
+.nuget/
+
+# NuGet v3 restore drops these even though we don't use MSBuild :(
+*.nuget.targets
+*.nuget.props
+
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/l
+bld/
+[Bb]in/
+[Oo]bj/
