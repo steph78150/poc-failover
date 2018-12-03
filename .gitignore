@@ -6,7 +6,6 @@
 *.nuget.targets
 *.nuget.props
 
-
 # User-specific files
 *.suo
 *.user
