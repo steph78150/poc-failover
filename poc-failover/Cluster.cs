@@ -5,12 +5,11 @@ using System.Text;
 
 namespace poc_failover
 {
-
     public class Cluster 
     {
         private readonly string[] _serverIds;
 
-        private readonly Node[] _processes; 
+        private readonly Node[] _nodes; 
 
         public Cluster(int numberOfServers) {
             var bus = new MessageBus();
@@ -18,26 +17,26 @@ namespace poc_failover
             var randomizer = new Randomizer();
             _serverIds = Enumerable.Range(1, numberOfServers)
                 .Select(index => "srv" + index).ToArray();
-            _processes = _serverIds
-            .Select(id => new Node(bus, new HeartbeatGenerator(heartbeatPolicy, randomizer), id))
+            _nodes = _serverIds
+            .Select(id => new Node(new HeartbeatGenerator(heartbeatPolicy, randomizer, bus), id))
             .ToArray();
 
-            var watcher = new HeartbeatWatcher(bus.GetMessageStream().OfType<HeartbeatMessage>(), heartbeatPolicy);;
+            var watcher = new HeartbeatWatcher(bus.GetMessageStream<HeartbeatMessage>(), heartbeatPolicy);;
         }
 
-        public Node FindProcess(string id) 
+        public Node FindNode(string id) 
         {
-            var process = _processes.SingleOrDefault(p => p.Id == id);
-            return process ?? throw new ArgumentException($"Process '{id}' does not exist");
+            var process = _nodes.SingleOrDefault(p => p.Id == id);
+            return process ?? throw new ArgumentException($"Node '{id}' does not exist");
         }
 
         public override string ToString()
         {
             var sb = new StringBuilder();
-            sb.AppendLine("Current cluster state :");
-            foreach (var proc in _processes)
+            sb.AppendLine("Cluster nodes :");
+            foreach (var node in _nodes)
             {
-                sb.AppendLine($"\t{proc}");
+                sb.AppendLine($"\t{node}");
             }
             return sb.ToString();
         }

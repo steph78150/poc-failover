@@ -2,11 +2,14 @@ using System;
 
 namespace poc_failover
 {
-    public interface IMessageBus
+    public interface IMessageBusPublisher
     {
-        void Send<T>(T msg) 
-            where T: IMessage;
-        IObservable<IMessage> GetMessageStream();
+         void Publish<T>(T msg)  where T: IMessage;
+    }
+
+    public interface IMessageBus : IMessageBusPublisher
+    {
+        IObservable<T> GetMessageStream<T>() where T: IMessage;
     }
     
 }

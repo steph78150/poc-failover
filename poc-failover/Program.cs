@@ -16,8 +16,15 @@ namespace poc_failover
                 Console.WriteLine("Please enter a command :");
                 var commandText = Console.ReadLine();
                 if (TryParse(commandText, out var runCommand, out var id)) {
-                    var process = cluster.FindProcess(id);
-                    runCommand(process);
+                    try 
+                    {
+                        var process = cluster.FindNode(id);
+                        runCommand(process);
+                    } 
+                    catch (Exception ex) 
+                    {
+                        Console.Error.WriteLine("Error: " + ex.Message);
+                    }
                 }
             }
         }

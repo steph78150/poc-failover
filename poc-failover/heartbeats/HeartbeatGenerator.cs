@@ -3,23 +3,35 @@ using System.Reactive.Linq;
 
 namespace poc_failover
 {
-    public class HeartbeatGenerator 
+    public interface IHeartbeatGenerator
+    {
+        IDisposable StartSendingHeartbearts(string sender);
+    }
+
+    public class HeartbeatGenerator : IHeartbeatGenerator
     {
         private readonly HeartbeatPolicy _policy;
         private readonly Randomizer _randomizer;
+        private readonly IMessageBusPublisher _publisher;
 
-        public HeartbeatGenerator(HeartbeatPolicy policy, Randomizer randomizer) 
+        public HeartbeatGenerator(HeartbeatPolicy policy, Randomizer randomizer, IMessageBusPublisher publisher) 
         {
             _policy = policy;
             _randomizer = randomizer;
+            _publisher = publisher;
         }
 
-        public IObservable<long> GetHeartbeatStream()
+        public IDisposable StartSendingHeartbearts(string sender)
          {
             return Observable
                 .Interval(_policy.Interval)
-                .Delay(_randomizer.GetRandomDelay(_policy.Interval));
-        }
+                .Delay(_randomizer.GetRandomDelay(_policy.Interval))
+                .Select((counter) =>  new HeartbeatMessage { Counter = counter, Sender = sender })
+                .Subscribe(msg =>
+                {
+                     _publisher.Publish(msg);
+                });
+         }
     }
 }
 
