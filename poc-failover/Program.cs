@@ -8,18 +8,19 @@ namespace poc_failover
     {
         public static void Main(string[] args)
         {
-            var cluster = new Cluster(5);
+            var cluster = ClusterFactory.Create(2);
 
-            while (true) {
+            while (true) 
+            {
                 Console.WriteLine(cluster);
                 Console.WriteLine();
                 Console.WriteLine("Please enter a command :");
                 var commandText = Console.ReadLine();
-                if (TryParse(commandText, out var runCommand, out var id)) {
+                if (TryParse(commandText, out var runCommand))
+                {
                     try 
                     {
-                        var process = cluster.FindNode(id);
-                        runCommand(process);
+                        runCommand(cluster);
                     } 
                     catch (Exception ex) 
                     {
@@ -29,18 +30,27 @@ namespace poc_failover
             }
         }
 
-        private static bool TryParse(string commandText, out Action<Node> runCommand, out string id)
+        private static bool TryParse(string commandText, out Action<Cluster> runCommand)
         {
             var parts = commandText.Split();
             string cmdText = parts.Length > 0 ? parts[0] : string.Empty;
-            id = parts.Length > 1 ? parts[1] : string.Empty;
+            string name = parts.Length > 1 ? parts[1] : string.Empty;
             switch (cmdText.ToLowerInvariant())
             {
                 case "start":
-                    runCommand = (Node p) => p.Start();
+                    runCommand = (Cluster c) => c.StartNode(name);
                     return true;
                 case "stop":
-                    runCommand = (Node p) => p.Stop();
+                    runCommand = (Cluster c) => c.StopNode(name);
+                    return true;
+                case "add":
+                    runCommand = (Cluster c) => c.AddNode(name);
+                    return true;
+                case "remove":
+                    runCommand = (Cluster c) => c.RemoveNode(name);
+                    return true;
+                case "quit":
+                    runCommand = (Cluster c) => c.Dispose();
                     return true;
                 default:
                      runCommand = null;
