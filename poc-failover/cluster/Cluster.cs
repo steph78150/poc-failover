@@ -55,7 +55,7 @@ namespace poc_failover
             _nodes.Remove(found);
             found.Dispose();
         }
-
+        
         public void Dispose() 
         {
             foreach (var node in this._nodes) {

@@ -3,6 +3,7 @@ using System.Reactive.Linq;
 
 namespace poc_failover
 {
+
     public class Node : IDisposable
     {
         public string Id {get;}

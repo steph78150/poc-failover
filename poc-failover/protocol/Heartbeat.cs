@@ -7,5 +7,7 @@ namespace poc_failover
 
         public override string ToString() => $"Heatbeat #{Counter}";
     }
+
+    
     
 }
