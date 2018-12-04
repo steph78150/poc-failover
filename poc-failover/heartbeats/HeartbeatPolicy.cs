@@ -4,11 +4,18 @@ namespace poc_failover
 {
     public class HeartbeatPolicy 
     {
-        public TimeSpan NetworkDelay => Interval / 2;
+        private readonly Randomizer _randomizer;
 
-        public TimeSpan Interval => TimeSpan.FromMilliseconds(1000);
+        public HeartbeatPolicy(Randomizer randomizer) 
+        {
+            _randomizer = randomizer;
+        }
 
-        public TimeSpan Timeout => 3 * Interval;
+        public TimeSpan NetworkDelay => TimeSpan.FromMilliseconds(15);
+
+        public TimeSpan Interval => 3 * NetworkDelay;
+
+        public TimeSpan ElectionTimeout => 10 * NetworkDelay;
     }
 }
 

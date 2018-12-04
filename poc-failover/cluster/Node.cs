@@ -22,8 +22,7 @@ namespace poc_failover
 
         public enum State {
             Stopped, 
-            Passive,
-            Active,
+            Running,
         }
 
         public void Start() {
@@ -31,7 +30,7 @@ namespace poc_failover
                 throw new InvalidOperationException("Server is already started.");
             }
             Console.WriteLine($"Node {this.Id} is starting");
-            this._state = State.Passive;
+            this._state = State.Running;
             _heartbeats = _generator.StartSendingHeartbearts(this.Id);
         }
 

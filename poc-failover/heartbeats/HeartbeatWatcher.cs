@@ -35,7 +35,7 @@ namespace poc_failover
         private void StartWatching(string serverId, HeartbeatPolicy policy) {
            var disposable =  _heartbeatStream
                 .Where(h => h.Sender == serverId)
-                .Select((_h) => Observable.Return(true).Delay(policy.Timeout))
+                .Select((_h) => Observable.Return(true).Delay(policy.ElectionTimeout))
                 .Switch()
                 .Take(1)
                 .Subscribe( (msg) => {
@@ -57,7 +57,7 @@ namespace poc_failover
                 NodeJoined(this, serverId);
             }
         }
-
+        
         public void Dispose()
         {
             throw new NotImplementedException();

@@ -11,34 +11,47 @@ namespace poc_failover
             };
         } 
 
-        public int Term { get; set;}
+        public int Term { get; private set; }
 
-        public string VotedFor { get; set ;}
+        public string VotedFor { get; private set;}
 
-        public void NewElection(string candidateId) 
+        public void NewElection(string myself) 
         {
             Term ++;
-            VotedFor = candidateId;
+            VotedFor = myself;
         }
 
-        public void SeenTerm(int term) 
+        private bool IsOlderTerm(CandidateMessage msg) => (msg.Term < this.Term);
+
+        private bool IsNewerTerm(CandidateMessage msg) => (msg.Term > this.Term);
+
+        private bool CanVoteFor(string candidate) => VotedFor == null || VotedFor == candidate;
+
+        private void ResetTerm(int term)
         {
-            if (Term < term) 
+            Term = term;
+            VotedFor = null;
+        }
+
+        public bool TryToVoteFor(CandidateMessage msg)
+        {
+            if (IsOlderTerm(msg))
             {
-                Term = term;
-                VotedFor = null;
+                return false;
             }
-        }
-
-        public bool TryToVoteFor(string candidateId) 
-        {
-            if (VotedFor == null || VotedFor == candidateId) 
+            if (IsNewerTerm(msg))
             {
-                VotedFor = candidateId;
+                ResetTerm(msg.Term);
+            }
+            if (CanVoteFor(msg.Candidate))
+            {
+                VotedFor = msg.Candidate;
                 return true;
             }
             return false;
         }
+
+        public override string ToString() => $"Current term is {Term}, last vote cast was {VotedFor ?? "NONE"}";
     }
 }
 

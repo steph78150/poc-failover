@@ -5,5 +5,7 @@ namespace poc_failover
         public string Candidate { get; set;}
         
         public int Term { get; set; }
+
+        public override string ToString() => $"Candidate {Candidate} for term {Term}";
     }
 }
