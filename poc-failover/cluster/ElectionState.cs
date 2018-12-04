@@ -15,10 +15,15 @@ namespace poc_failover
 
         public string VotedFor { get; private set;}
 
-        public void NewElection(string myself) 
+        public CandidateMessage NewElection(string myself) 
         {
             Term ++;
             VotedFor = myself;
+            return new CandidateMessage 
+            {
+                Candidate = this.VotedFor,
+                Term = this.Term
+            };
         }
 
         private bool IsOlderTerm(CandidateMessage msg) => (msg.Term < this.Term);

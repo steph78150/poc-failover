@@ -7,40 +7,40 @@ using System.Text;
 namespace poc_failover
 {
 
+    public interface ICluster {
+        int NumberOfNodes {get;}
 
-    public class Cluster : IDisposable
+        int Quorum {get;}
+    }
+
+    public class Cluster : IDisposable, ICluster
     {
-        private readonly IList<Node> _nodes = new List<Node>();
+        private readonly IList<Node> _nodes;
         private readonly MessageBus _bus;
-        private readonly HeartbeatPolicy _heartbeatPolicy;
+        private readonly TimingPolicy _timingPolicy;
         private readonly Randomizer _randomizer;
 
-        public Cluster(MessageBus bus, HeartbeatPolicy policy, Randomizer randomizer) 
+        public int NumberOfNodes => _nodes.Count;
+
+        public int Quorum => (NumberOfNodes / 2) + 1;
+
+        public Cluster(MessageBus bus, TimingPolicy policy, Randomizer randomizer, IList<string> serverIds) 
         {
             this._bus = bus;
-            this._heartbeatPolicy = policy;
+            this._timingPolicy = policy;
             this._randomizer = randomizer;
+            _nodes = serverIds.Select(id => CreateNode(id, serverIds.Count)).ToList();
         }
 
-        private Node CreateNode(string serverId) 
+        private Node CreateNode(string serverId, int totalNumberOfNodes) 
         {
-            var generator = new HeartbeatGenerator(_heartbeatPolicy, _randomizer, _bus);
-            var heartbeatMessages = _bus.GetMessageStream<HeartbeatMessage>().Delay(_randomizer.GetRandomDelay(_heartbeatPolicy.NetworkDelay));
-            var watcher = new HeartbeatWatcher(heartbeatMessages, _heartbeatPolicy);
-            return new Node(generator, new ClusterWatcher(serverId, watcher), serverId);
-        }
-
-        public void AddNode(string serverId)
-        {
-            var node = CreateNode(serverId);
-            _nodes.Add(node); 
-            node.Start();
-        }
-
-        public void StartNode(string serverId) 
-        {
-            var found = FindNode(serverId);
-            found.Start();
+            var state = ElectionState.Empty();
+            var generator = new HeartbeatGenerator(_timingPolicy, _randomizer, _bus);
+            var heartbeatMessages = _bus.GetMessageStream<HeartbeatMessage>().Delay(_randomizer.GetRandomDelay(_timingPolicy.NetworkDelay));
+            var watcher = new HeartbeatWatcher(heartbeatMessages, _timingPolicy);
+            var voter = new ElectionVoter(_bus, _bus.GetMessageStream<CandidateMessage>(), state, serverId);
+            var candidate = new ElectionCandidate(_bus, _bus.GetMessageStream<VoteMessage>(), state, this, _timingPolicy);
+            return new Node(serverId, generator, watcher, candidate);
         }
 
         public void StopNode(string serverId) 

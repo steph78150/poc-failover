@@ -8,14 +8,13 @@ namespace poc_failover
         {
             var bus = new MessageBus();
             var randomizer = new Randomizer();
-            var heartbeatPolicy = new HeartbeatPolicy(randomizer);
-            var cluster = new Cluster(bus, heartbeatPolicy, randomizer);
+            var heartbeatPolicy = new TimingPolicy(randomizer);
 
-            foreach (var serverId in Enumerable.Range(1, numberOfServers).Select(index => "server_" + index)) 
-            {
-                cluster.AddNode(serverId);
-            }
-
+            var serverIds = Enumerable.Range(1, numberOfServers)
+                .Select(index => "server_" + index)
+                .ToArray(); 
+           
+            var cluster = new Cluster(bus, heartbeatPolicy, randomizer, serverIds);
             return cluster;
         }
     }

@@ -4,11 +4,16 @@ using System.Reactive.Linq;
 
 namespace poc_failover
 {
-    public interface IHeartbeatWatcher : IDisposable
+    public class MasterElectedEvent {
+        public string NewMaster {get;set;}
+        public int Term {get; set;}
+    }
+    
+     public interface IHeartbeatWatcher : IDisposable
     {
-        event EventHandler<string> NodeJoined;
+        event EventHandler<MasterElectedEvent> MasterElected;
 
-        event EventHandler<string> NodeLeft;
+        event EventHandler<string> MasterDead;
     }
 
     public class HeartbeatWatcher : IHeartbeatWatcher
@@ -18,49 +23,51 @@ namespace poc_failover
 
         private IList<IDisposable> _watching = new List<IDisposable>();
 
-        public event EventHandler<string> NodeJoined;
-        public event EventHandler<string> NodeLeft;
-
-        public HeartbeatWatcher(IObservable<HeartbeatMessage> heartbeatStream, HeartbeatPolicy policy) {
+        public event EventHandler<MasterElectedEvent> MasterElected;
+        public event EventHandler<string> MasterDead;
+        
+        public HeartbeatWatcher(IObservable<HeartbeatMessage> heartbeatStream, TimingPolicy policy) {
             this._heartbeatStream = heartbeatStream;
             this._heartbeatStream.Subscribe( (h) => {
-                if (!_knownServerIds.Contains(h.Sender)) {
-                    _knownServerIds.Add(h.Sender);
-                    StartWatching(h.Sender, policy);
-                    OnServerJoined(h.Sender);
+                if (!_knownServerIds.Contains(h.CurrentMaster)) {
+                    _knownServerIds.Add(h.CurrentMaster);
+                    StartWatching(h.CurrentMaster, policy);
+                    OnMasterElected(h.CurrentMaster, h.Term);
                 }
             });
         }
 
-        private void StartWatching(string serverId, HeartbeatPolicy policy) {
+        private void StartWatching(string serverId, TimingPolicy policy) {
            var disposable =  _heartbeatStream
-                .Where(h => h.Sender == serverId)
-                .Select((_h) => Observable.Return(true).Delay(policy.ElectionTimeout))
+                .Where(h => h.CurrentMaster == serverId)
+                .Select((_h) => Observable.Return(true).Delay(policy.GetElectionTimeout()))
                 .Switch()
                 .Take(1)
                 .Subscribe( (msg) => {
-                    OnServerLeft(serverId);
+                    OnMasterDead(serverId);
                     _knownServerIds.Remove(serverId);
                 });
 
             this._watching.Add(disposable);
         }
 
-        private void OnServerLeft(string serverId) {
-            if (NodeLeft != null) {
-                NodeLeft(this, serverId);
+        private void OnMasterDead(string serverId) {
+            if (MasterDead != null) {
+                MasterDead(this, serverId);
             }
         }
 
-        private void OnServerJoined(string serverId) {
-            if (NodeJoined != null) {
-                NodeJoined(this, serverId);
+        private void OnMasterElected(string serverId, int term) {
+            if (MasterElected != null) {
+                MasterElected(this, new MasterElectedEvent {NewMaster = serverId, Term = term});
             }
         }
-        
+
         public void Dispose()
         {
-            throw new NotImplementedException();
+            foreach (var w in this._watching) {
+                w.Dispose();
+            }
         }
     }
 }

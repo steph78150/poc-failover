@@ -37,14 +37,8 @@ namespace poc_failover
             string name = parts.Length > 1 ? parts[1] : string.Empty;
             switch (cmdText.ToLowerInvariant())
             {
-                case "start":
-                    runCommand = (Cluster c) => c.StartNode(name);
-                    return true;
                 case "stop":
                     runCommand = (Cluster c) => c.StopNode(name);
-                    return true;
-                case "add":
-                    runCommand = (Cluster c) => c.AddNode(name);
                     return true;
                 case "remove":
                     runCommand = (Cluster c) => c.RemoveNode(name);
