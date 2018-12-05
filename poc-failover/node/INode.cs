@@ -8,7 +8,7 @@ namespace poc_failover
 
         void Stop();
 
-        string ServerName {get;}
+        string RealServerName {get;}
 
         string CurrentIdentity {get;}
 

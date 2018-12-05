@@ -8,13 +8,13 @@ namespace poc_failover
 {
     public class Cluster : IDisposable
     {
-        private readonly IList<INode> _nodes = new List<INode>();
+        private readonly IList<Node> _nodes = new List<Node>();
 
         public Cluster() 
         {
         }
 
-        public void AddNode(INode node)
+        public void AddNode(Node node)
         {
             _nodes.Add(node); 
             node.Start();
@@ -46,10 +46,10 @@ namespace poc_failover
             }
         }
 
-        private INode FindNode(string id) 
+        private Node FindNode(string id) 
         {
-            var process = _nodes.SingleOrDefault(p => p.ServerName == id);
-            return process ?? throw new ArgumentException($"Node '{id}' does not exist");
+            var node = _nodes.SingleOrDefault(p => p.RealServerName == id);
+            return node ?? throw new ArgumentException($"Node '{id}' does not exist");
         }
 
         public override string ToString()
@@ -58,7 +58,7 @@ namespace poc_failover
             sb.AppendLine("Cluster nodes :");
             foreach (var node in _nodes)
             {
-                sb.AppendLine($"\t{node} => {node.CurrentIdentity ?? "IDLE"}");
+                sb.AppendLine($"\t{node} => {node.CurrentIdentity ?? "<WAITING>"}");
             }
             return sb.ToString();
         }

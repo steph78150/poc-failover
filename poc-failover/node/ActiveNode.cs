@@ -3,42 +3,34 @@
 namespace poc_failover
 {
 
-    public class ActiveNode : INode
+    public class ActiveNode : Node
     {
-        private readonly string _serverName;
-
-        private readonly IHeartbeatWatcher _heartbeatWatcher;
+    
         private readonly IHeartbeatGenerator _heartbeatGenerator;
 
         private IDisposable _heartbeats = null;
 
         private string _backupServerName;
 
-        public ActiveNode(string serverName, IHeartbeatWatcher heartbeatWatcher, 
-            IHeartbeatGenerator heartbeatGenerator) 
+        public ActiveNode(string serverName, IHeartbeatWatcher heartbeatWatcher, IHeartbeatGenerator heartbeatGenerator) 
+        : base(serverName, heartbeatWatcher)
         {
-            this._serverName = serverName;
-            this._heartbeatWatcher = heartbeatWatcher;
             this._heartbeatGenerator = heartbeatGenerator;
-
-            heartbeatWatcher.NodeJoined += OnNodeJoined;
-            heartbeatWatcher.NodeLeft += OnNodeLeft;
         }
 
-        public void Start() 
+        public override void Start() 
         {
             if (CurrentState == State.Running) 
             {
                 throw new InvalidOperationException("Node is already started");
             }
 
-            var msg = new HeartbeatMessage { Sender = _serverName, CurrentIdentity = _serverName };
+            var msg = new HeartbeatMessage { Sender = RealServerName, CurrentIdentity = RealServerName};
             _heartbeats = _heartbeatGenerator.StartSendingHeartbearts(msg);
         }
 
-        public string ServerName => _serverName;
-
-        public string CurrentIdentity => CurrentState ==  State.Stopped ? null : _serverName;
+      
+        public override string CurrentIdentity => CurrentState ==  State.Stopped ? null : RealServerName;
 
         private State CurrentState 
         {
@@ -49,14 +41,13 @@ namespace poc_failover
             }
         }
 
-        public void Dispose() 
+        public override void Dispose() 
         {
-            this._heartbeatWatcher.NodeJoined -= OnNodeJoined;
-            this._heartbeatWatcher.NodeLeft -= OnNodeLeft;
+            base.Dispose();
             StopHeartbeats();
         }
 
-        public void Stop()
+        public override void Stop()
         {
             if (CurrentState != State.Running)
             {
@@ -71,26 +62,24 @@ namespace poc_failover
             _heartbeats = null;
         }
 
-        private void OnNodeLeft(object sender, string serverId)
+        protected override void OnNodeLeft(object sender, string serverId)
         {
-            if (serverId == _serverName) return;
-            Console.Out.WriteLine($"{_serverName} noticed that node {serverId} has left the cluster");
+            Console.Out.WriteLine($"{RealServerName} noticed that node {serverId} has left the cluster");
             if (_backupServerName == serverId) {
                 _backupServerName = null;
-                Console.Out.WriteLine($"Node {_serverName} had no longer any backup");
+                Console.Out.WriteLine($"Node {RealServerName} had no longer any backup");
             }
         }
 
-        private void OnNodeJoined(object sender, HeartbeatMessage message)
+        protected override void OnNodeJoined(object sender, HeartbeatMessage message)
         {
-            if (message.Sender == _serverName) return;
-            Console.Out.WriteLine($"{_serverName} noticed that node {message.Sender} has joined the cluster");
-            if (message.CurrentIdentity == _serverName) {
+            Console.Out.WriteLine($"{RealServerName} noticed that node {message.Sender} has joined the cluster");
+            if (message.CurrentIdentity == RealServerName) {
                  _backupServerName = message.Sender;
-                 Console.Out.WriteLine($"Node {_serverName} knows that it is backuped by {_backupServerName} and can safely stop now");
+                 Console.Out.WriteLine($"Node {RealServerName} knows that it is backuped by {_backupServerName} and can safely stop now");
             }
         }
 
-        public override string ToString() => $"Node {_serverName} is {this.CurrentState}";
+        public override string ToString() => $"Node {RealServerName} is {this.CurrentState}";
     }
 }

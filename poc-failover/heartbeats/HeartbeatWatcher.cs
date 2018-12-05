@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reactive.Linq;
 
@@ -13,23 +14,20 @@ namespace poc_failover
 
     public class HeartbeatWatcher : IHeartbeatWatcher
     {
-        private ISet<string> _knownServerIds;
+        private ConcurrentDictionary<string, string> _knownServerIds;
 
-        private IList<IDisposable> _watching;
+        private ConcurrentBag<IDisposable> _watching;
 
         public event EventHandler<HeartbeatMessage> NodeJoined;
         public event EventHandler<string> NodeLeft;
 
         public HeartbeatWatcher(IObservable<HeartbeatMessage> heartbeatStream, HeartbeatPolicy policy) {
-            _knownServerIds = new HashSet<string>();
-            _watching = new List<IDisposable>();
+            _knownServerIds = new ConcurrentDictionary<string, string>();
+            _watching = new ConcurrentBag<IDisposable>();
             heartbeatStream.Subscribe( (h) => {
-                lock (_knownServerIds) {
-                    if (!_knownServerIds.Contains(h.Sender)) {
-                        _knownServerIds.Add(h.Sender);
-                        StartWatching(heartbeatStream, h.Sender, policy);
-                        OnServerJoined(h);
-                    }
+                if (_knownServerIds.TryAdd(h.Sender, h.Sender)) {
+                    StartWatching(heartbeatStream, h.Sender, policy);
+                    OnServerJoined(h);
                 }
             });
         }
@@ -42,7 +40,7 @@ namespace poc_failover
                 .Take(1)
                 .Subscribe( (msg) => {
                     OnServerLeft(serverId);
-                    _knownServerIds.Remove(serverId);
+                    _knownServerIds.TryRemove(serverId, out var _);
                 });
 
             this._watching.Add(disposable);
@@ -62,7 +60,9 @@ namespace poc_failover
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            while (_watching.TryTake(out var taken)) {
+                taken.Dispose();
+            }
         }
     }
 }

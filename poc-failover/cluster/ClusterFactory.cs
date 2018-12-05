@@ -15,14 +15,14 @@ namespace poc_failover
             _randomizer = new Randomizer();
         }
 
-        public INode CreateActiveNode(string serverId) {
+        public Node CreateActiveNode(string serverId) {
             return new ActiveNode(serverId, 
                 new HeartbeatWatcher(_bus.GetMessageStream<HeartbeatMessage>(), _heartbeatPolicy), 
                 new HeartbeatGenerator(_heartbeatPolicy, _bus)
             );
         }
 
-        public INode CreatePassiveNode(string serverId) {
+        public Node CreatePassiveNode(string serverId) {
              return new PassiveNode(serverId, 
                 new HeartbeatWatcher(_bus.GetMessageStream<HeartbeatMessage>(), _heartbeatPolicy), 
                 new HeartbeatGenerator(_heartbeatPolicy, _bus)
