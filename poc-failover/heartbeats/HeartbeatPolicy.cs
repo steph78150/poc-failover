@@ -4,11 +4,11 @@ namespace poc_failover
 {
     public class HeartbeatPolicy 
     {
-        public TimeSpan NetworkDelay => Interval / 2;
+        public TimeSpan NetworkDelay => TimeSpan.FromMilliseconds(15);
 
-        public TimeSpan Interval => TimeSpan.FromMilliseconds(1000);
+        public TimeSpan HeartbeatInterval => TimeSpan.FromMilliseconds(100);
 
-        public TimeSpan Timeout => 3 * Interval;
+        public TimeSpan Timeout => HeartbeatInterval + 5 * NetworkDelay;
     }
 }
 

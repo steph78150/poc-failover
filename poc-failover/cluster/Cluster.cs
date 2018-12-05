@@ -6,33 +6,16 @@ using System.Text;
 
 namespace poc_failover
 {
-
-
     public class Cluster : IDisposable
     {
-        private readonly IList<Node> _nodes = new List<Node>();
-        private readonly MessageBus _bus;
-        private readonly HeartbeatPolicy _heartbeatPolicy;
-        private readonly Randomizer _randomizer;
+        private readonly IList<INode> _nodes = new List<INode>();
 
-        public Cluster(MessageBus bus, HeartbeatPolicy policy, Randomizer randomizer) 
+        public Cluster() 
         {
-            this._bus = bus;
-            this._heartbeatPolicy = policy;
-            this._randomizer = randomizer;
         }
 
-        private Node CreateNode(string serverId) 
+        public void AddNode(INode node)
         {
-            var generator = new HeartbeatGenerator(_heartbeatPolicy, _randomizer, _bus);
-            var heartbeatMessages = _bus.GetMessageStream<HeartbeatMessage>().Delay(_randomizer.GetRandomDelay(_heartbeatPolicy.NetworkDelay));
-            var watcher = new HeartbeatWatcher(heartbeatMessages, _heartbeatPolicy);
-            return new Node(generator, new ClusterWatcher(serverId, watcher), serverId);
-        }
-
-        public void AddNode(string serverId)
-        {
-            var node = CreateNode(serverId);
             _nodes.Add(node); 
             node.Start();
         }
@@ -63,9 +46,9 @@ namespace poc_failover
             }
         }
 
-        private Node FindNode(string id) 
+        private INode FindNode(string id) 
         {
-            var process = _nodes.SingleOrDefault(p => p.Id == id);
+            var process = _nodes.SingleOrDefault(p => p.ServerName == id);
             return process ?? throw new ArgumentException($"Node '{id}' does not exist");
         }
 
@@ -75,7 +58,7 @@ namespace poc_failover
             sb.AppendLine("Cluster nodes :");
             foreach (var node in _nodes)
             {
-                sb.AppendLine($"\t{node}");
+                sb.AppendLine($"\t{node} => {node.CurrentIdentity ?? "IDLE"}");
             }
             return sb.ToString();
         }

@@ -8,9 +8,9 @@ namespace poc_failover
     {
         public static void Main(string[] args)
         {
-            var cluster = ClusterFactory.Create(2);
+            Cluster cluster = CreateCluster(2, 1);
 
-            while (true) 
+            while (true)
             {
                 Console.WriteLine(cluster);
                 Console.WriteLine();
@@ -18,16 +18,33 @@ namespace poc_failover
                 var commandText = Console.ReadLine();
                 if (TryParse(commandText, out var runCommand))
                 {
-                    try 
+                    try
                     {
                         runCommand(cluster);
-                    } 
-                    catch (Exception ex) 
+                    }
+                    catch (Exception ex)
                     {
                         Console.Error.WriteLine("Error: " + ex.Message);
                     }
                 }
             }
+        }
+
+        private static Cluster CreateCluster(int activeCount, int passiveCount)
+        {
+            var factory = new NodeFactory();
+            var cluster = new Cluster();
+
+            for (int i = 1; i <= activeCount; i++) 
+            {
+               cluster.AddNode(factory.CreateActiveNode("server_" + i)); 
+            }
+            for (int i = 1; i <= passiveCount; i++) 
+            {
+               cluster.AddNode(factory.CreatePassiveNode("spare_" + i)); 
+            }
+
+            return cluster;
         }
 
         private static bool TryParse(string commandText, out Action<Cluster> runCommand)
@@ -42,9 +59,6 @@ namespace poc_failover
                     return true;
                 case "stop":
                     runCommand = (Cluster c) => c.StopNode(name);
-                    return true;
-                case "add":
-                    runCommand = (Cluster c) => c.AddNode(name);
                     return true;
                 case "remove":
                     runCommand = (Cluster c) => c.RemoveNode(name);

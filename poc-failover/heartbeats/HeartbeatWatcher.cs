@@ -6,34 +6,36 @@ namespace poc_failover
 {
     public interface IHeartbeatWatcher : IDisposable
     {
-        event EventHandler<string> NodeJoined;
+        event EventHandler<HeartbeatMessage> NodeJoined;
 
         event EventHandler<string> NodeLeft;
     }
 
     public class HeartbeatWatcher : IHeartbeatWatcher
     {
-        private IObservable<HeartbeatMessage> _heartbeatStream;
-        private ISet<string> _knownServerIds = new HashSet<string>();
+        private ISet<string> _knownServerIds;
 
-        private IList<IDisposable> _watching = new List<IDisposable>();
+        private IList<IDisposable> _watching;
 
-        public event EventHandler<string> NodeJoined;
+        public event EventHandler<HeartbeatMessage> NodeJoined;
         public event EventHandler<string> NodeLeft;
 
         public HeartbeatWatcher(IObservable<HeartbeatMessage> heartbeatStream, HeartbeatPolicy policy) {
-            this._heartbeatStream = heartbeatStream;
-            this._heartbeatStream.Subscribe( (h) => {
-                if (!_knownServerIds.Contains(h.Sender)) {
-                    _knownServerIds.Add(h.Sender);
-                    StartWatching(h.Sender, policy);
-                    OnServerJoined(h.Sender);
+            _knownServerIds = new HashSet<string>();
+            _watching = new List<IDisposable>();
+            heartbeatStream.Subscribe( (h) => {
+                lock (_knownServerIds) {
+                    if (!_knownServerIds.Contains(h.Sender)) {
+                        _knownServerIds.Add(h.Sender);
+                        StartWatching(heartbeatStream, h.Sender, policy);
+                        OnServerJoined(h);
+                    }
                 }
             });
         }
 
-        private void StartWatching(string serverId, HeartbeatPolicy policy) {
-           var disposable =  _heartbeatStream
+        private void StartWatching(IObservable<HeartbeatMessage> heartbeatStream, string serverId, HeartbeatPolicy policy) {
+           var disposable =  heartbeatStream
                 .Where(h => h.Sender == serverId)
                 .Select((_h) => Observable.Return(true).Delay(policy.Timeout))
                 .Switch()
@@ -52,9 +54,9 @@ namespace poc_failover
             }
         }
 
-        private void OnServerJoined(string serverId) {
+        private void OnServerJoined(HeartbeatMessage msg) {
             if (NodeJoined != null) {
-                NodeJoined(this, serverId);
+                NodeJoined(this, msg);
             }
         }
 

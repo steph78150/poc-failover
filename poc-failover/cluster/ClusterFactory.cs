@@ -2,21 +2,31 @@ using System.Linq;
 
 namespace poc_failover
 {
-    public static class ClusterFactory 
+    public class NodeFactory 
     {
-        public static Cluster Create(int numberOfServers) 
+        private MessageBus _bus;
+        private HeartbeatPolicy _heartbeatPolicy;
+        private Randomizer _randomizer;
+
+        public NodeFactory() 
         {
-            var bus = new MessageBus();
-            var heartbeatPolicy = new HeartbeatPolicy();
-            var randomizer = new Randomizer();
-            var cluster = new Cluster(bus, heartbeatPolicy, randomizer);
+            _bus =  new MessageBus();
+            _heartbeatPolicy = new HeartbeatPolicy();
+            _randomizer = new Randomizer();
+        }
 
-            foreach (var serverId in Enumerable.Range(1, numberOfServers).Select(index => "server_" + index)) 
-            {
-                cluster.AddNode(serverId);
-            }
+        public INode CreateActiveNode(string serverId) {
+            return new ActiveNode(serverId, 
+                new HeartbeatWatcher(_bus.GetMessageStream<HeartbeatMessage>(), _heartbeatPolicy), 
+                new HeartbeatGenerator(_heartbeatPolicy, _bus)
+            );
+        }
 
-            return cluster;
+        public INode CreatePassiveNode(string serverId) {
+             return new PassiveNode(serverId, 
+                new HeartbeatWatcher(_bus.GetMessageStream<HeartbeatMessage>(), _heartbeatPolicy), 
+                new HeartbeatGenerator(_heartbeatPolicy, _bus)
+             );
         }
     }
 }
