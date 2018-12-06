@@ -28,10 +28,10 @@
             this._heartbeatWatcher.Dispose();
         }
 
-        private void NodeLeft(object sender, string serverId) 
+        private void NodeLeft(object sender, HeartbeatMessage msg) 
         {
-            if (serverId == RealServerName) return;
-            OnNodeLeft(sender, serverId);
+            if (msg.Sender == RealServerName) return;
+            OnNodeLeft(sender, msg);
         }
         private void NodeJoined(object sender, HeartbeatMessage msg) 
         {
@@ -39,8 +39,8 @@
             OnNodeJoined(sender,msg );
         }
 
-        protected abstract void OnNodeLeft(object sender, string e);
-        protected abstract void OnNodeJoined(object sender, HeartbeatMessage e);
+        protected abstract void OnNodeLeft(object sender, HeartbeatMessage heartbeat);
+        protected abstract void OnNodeJoined(object sender, HeartbeatMessage heartbeat);
 
         public virtual void Start()
         {  

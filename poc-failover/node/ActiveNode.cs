@@ -12,7 +12,8 @@ namespace poc_failover
 
         private string _backupServerName;
 
-        public ActiveNode(string serverName, IHeartbeatWatcher heartbeatWatcher, IHeartbeatGenerator heartbeatGenerator) 
+        public ActiveNode(string serverName, IHeartbeatWatcher heartbeatWatcher, 
+            IHeartbeatGenerator heartbeatGenerator) 
         : base(serverName, heartbeatWatcher)
         {
             this._heartbeatGenerator = heartbeatGenerator;
@@ -62,10 +63,10 @@ namespace poc_failover
             _heartbeats = null;
         }
 
-        protected override void OnNodeLeft(object sender, string serverId)
+        protected override void OnNodeLeft(object sender, HeartbeatMessage msg)
         {
-            Console.Out.WriteLine($"{RealServerName} noticed that node {serverId} has left the cluster");
-            if (_backupServerName == serverId) {
+            Console.Out.WriteLine($"{RealServerName} noticed that node {msg} has left the cluster");
+            if (_backupServerName == msg.Sender && msg.CurrentIdentity == RealServerName) {
                 _backupServerName = null;
                 Console.Out.WriteLine($"Node {RealServerName} had no longer any backup");
             }
@@ -73,7 +74,7 @@ namespace poc_failover
 
         protected override void OnNodeJoined(object sender, HeartbeatMessage message)
         {
-            Console.Out.WriteLine($"{RealServerName} noticed that node {message.Sender} has joined the cluster");
+            Console.Out.WriteLine($"{RealServerName} noticed that node {message} has joined the cluster");
             if (message.CurrentIdentity == RealServerName) {
                  _backupServerName = message.Sender;
                  Console.Out.WriteLine($"Node {RealServerName} knows that it is backuped by {_backupServerName} and can safely stop now");

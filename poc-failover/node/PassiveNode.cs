@@ -1,10 +1,14 @@
 ﻿using System;
+using System.Collections.Concurrent;
+using System.Linq;
 
 namespace poc_failover
 {
     public class PassiveNode : Node, INode
     {
         private readonly PassiveNodeState _state;
+
+        private readonly ConcurrentDictionary<string, string> _deadServersQueue = new ConcurrentDictionary<string, string>();
 
         public PassiveNode(string serverName, IHeartbeatWatcher heartbeatWatcher, IHeartbeatGenerator heartbeatGenerator) 
         : base(serverName, heartbeatWatcher)
@@ -19,30 +23,41 @@ namespace poc_failover
             _state.StopBackuping();
         }
 
-        protected override void OnNodeLeft(object sender, string serverId)
+        protected override void OnNodeLeft(object sender, HeartbeatMessage msg)
         {
-            Console.Out.WriteLine($"{RealServerName} noticed that node {serverId} has left the cluster");
-            if (_state.TryStartBackuping(serverId, RealServerName))
+            Console.Out.WriteLine($"{RealServerName} noticed that node {msg} has left the cluster");
+            if (_state.TryStartBackuping(msg.Sender, RealServerName))
             {
-                Console.Out.WriteLine($"{RealServerName} will now act as backup for {serverId}");
+                Console.Out.WriteLine($"{RealServerName} will now act as backup for {msg.Sender}");
             }
             else
             {
-                Console.Out.WriteLine($"S{RealServerName} can not backup server {serverId} because it is already busy backuping for {CurrentIdentity}");
+                _deadServersQueue.TryAdd(msg.Sender, msg.Sender);
+                Console.Out.WriteLine($"S{RealServerName} can not backup server {msg.Sender} because it is already busy backuping for {CurrentIdentity}");
             }
         }
     
         protected override void OnNodeJoined(object sender, HeartbeatMessage message)
         {
-            Console.Out.WriteLine($"{RealServerName} noticed that node {message.Sender} has joined the cluster");
+            Console.Out.WriteLine($"{RealServerName} noticed that node {message} has joined the cluster");
             if (_state.TryStopBackuping(message.Sender))
             {
                 Console.Out.WriteLine($"Spare node {RealServerName} no longer need to backup {CurrentIdentity} because it is back");
+                var nextDeadServer = _deadServersQueue.Keys.FirstOrDefault();
+                if (nextDeadServer != null && _deadServersQueue.TryRemove(nextDeadServer, out var _)) {
+                    if (_state.TryStartBackuping(nextDeadServer, RealServerName)) {
+                        Console.Out.WriteLine($"{RealServerName} will now act as backup for {nextDeadServer}");
+                    }
+                }
+            } else {
+                _deadServersQueue.TryRemove(message.Sender, out var _);
             }
         }
 
+        private string QueueText => _deadServersQueue.Count > 0 ? string.Join(",", _deadServersQueue.Keys.ToArray()) : "empty";
+
     
-        public override string ToString() => $"Spare node {RealServerName} is {_state.StateText}";
+        public override string ToString() => $"Spare node {RealServerName} is {_state.StateText} (Queue is {QueueText})";
 
 
         public class PassiveNodeState 
@@ -90,11 +105,6 @@ namespace poc_failover
                 this._heartbeatGenerator = heartbeatGenerator;
             }
 
-            private bool IsBackupingNode(string serverId)
-            {
-                return _backup != null && _backup.MasqueradingAsServerName == serverId;
-            }
-
             private bool IsFree()
             {
                 return _backup == null;;
@@ -129,7 +139,7 @@ namespace poc_failover
             {
                 lock (_lock) 
                 {
-                    if (IsBackupingNode(serverName))
+                    if (_backup?.MasqueradingAsServerName == serverName)
                     {
                         StopBackuping();
                         return true;

@@ -9,46 +9,46 @@ namespace poc_failover
     {
         event EventHandler<HeartbeatMessage> NodeJoined;
 
-        event EventHandler<string> NodeLeft;
+        event EventHandler<HeartbeatMessage> NodeLeft;
     }
 
     public class HeartbeatWatcher : IHeartbeatWatcher
     {
-        private ConcurrentDictionary<string, string> _knownServerIds;
+        private ConcurrentDictionary<HeartbeatMessage, HeartbeatMessage> _knownHeartbeats;
 
         private ConcurrentBag<IDisposable> _watching;
 
         public event EventHandler<HeartbeatMessage> NodeJoined;
-        public event EventHandler<string> NodeLeft;
+        public event EventHandler<HeartbeatMessage> NodeLeft;
 
         public HeartbeatWatcher(IObservable<HeartbeatMessage> heartbeatStream, HeartbeatPolicy policy) {
-            _knownServerIds = new ConcurrentDictionary<string, string>();
+            _knownHeartbeats = new ConcurrentDictionary<HeartbeatMessage, HeartbeatMessage>();
             _watching = new ConcurrentBag<IDisposable>();
             heartbeatStream.Subscribe( (h) => {
-                if (_knownServerIds.TryAdd(h.Sender, h.Sender)) {
-                    StartWatching(heartbeatStream, h.Sender, policy);
+                if (_knownHeartbeats.TryAdd(h, h)) {
+                    StartWatching(heartbeatStream, h, policy);
                     OnServerJoined(h);
                 }
             });
         }
 
-        private void StartWatching(IObservable<HeartbeatMessage> heartbeatStream, string serverId, HeartbeatPolicy policy) {
+        private void StartWatching(IObservable<HeartbeatMessage> heartbeatStream, HeartbeatMessage first, HeartbeatPolicy policy) {
            var disposable =  heartbeatStream
-                .Where(h => h.Sender == serverId)
+                .Where(h => h.Equals(first))
                 .Select((_h) => Observable.Return(true).Delay(policy.Timeout))
                 .Switch()
                 .Take(1)
                 .Subscribe( (msg) => {
-                    OnServerLeft(serverId);
-                    _knownServerIds.TryRemove(serverId, out var _);
+                    OnServerLeft(first);
+                    _knownHeartbeats.TryRemove(first, out var _);
                 });
 
             this._watching.Add(disposable);
         }
 
-        private void OnServerLeft(string serverId) {
+        private void OnServerLeft(HeartbeatMessage msg) {
             if (NodeLeft != null) {
-                NodeLeft(this, serverId);
+                NodeLeft(this, msg);
             }
         }
 
