@@ -6,12 +6,15 @@ using System.Text;
 
 namespace poc_failover
 {
+
     public class Cluster : IDisposable
     {
         private readonly IList<Node> _nodes = new List<Node>();
+        private readonly IHeartbeatWatcher _watcher;
 
-        public Cluster() 
+        public Cluster(IHeartbeatWatcher watcher) 
         {
+            this._watcher = watcher;
         }
 
         public void AddNode(Node node)
@@ -44,6 +47,7 @@ namespace poc_failover
             foreach (var node in this._nodes) {
                 node.Dispose();
             }
+            _watcher.Dispose();
         }
 
         private Node FindNode(string id) 
@@ -52,13 +56,20 @@ namespace poc_failover
             return node ?? throw new ArgumentException($"Node '{id}' does not exist");
         }
 
+        private int ExpectedActiveNodes => _nodes.OfType<ActiveNode>().Count();
+
+        private bool IsHealthy => _watcher.ActiveNodeCount == ExpectedActiveNodes;
+
+        private string HealthCheck => IsHealthy ? "HEALTHY" : $"KO ({_watcher.ActiveNodeCount}/{ExpectedActiveNodes})";
+
         public override string ToString()
         {
             var sb = new StringBuilder();
-            sb.AppendLine("Cluster nodes :");
+            sb.AppendLine("Cluster nodes : " + HealthCheck );
             foreach (var node in _nodes)
             {
                 sb.AppendLine($"\t{node} => {node.CurrentIdentity ?? "<WAITING>"}");
+                
             }
             return sb.ToString();
         }

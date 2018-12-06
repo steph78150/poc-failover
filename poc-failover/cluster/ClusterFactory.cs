@@ -15,16 +15,27 @@ namespace poc_failover
             _randomizer = new Randomizer();
         }
 
-        public Node CreateActiveNode(string serverId) {
-            return new ActiveNode(serverId, 
-                new HeartbeatWatcher(_bus.GetMessageStream<HeartbeatMessage>(), _heartbeatPolicy), 
+        public Node CreateActiveNode(string serverId)
+        {
+            return new ActiveNode(serverId,
+                CreateHeartbeatWatcher(),
                 new HeartbeatGenerator(_heartbeatPolicy, _bus)
             );
         }
 
+        public Cluster CreateCluster() {
+            return new Cluster(CreateHeartbeatWatcher());
+        }
+
+
+        private HeartbeatWatcher CreateHeartbeatWatcher()
+        {
+            return new HeartbeatWatcher(_bus.GetMessageStream<HeartbeatMessage>(), _heartbeatPolicy);
+        }
+
         public Node CreatePassiveNode(string serverId) {
              return new PassiveNode(serverId, 
-                new HeartbeatWatcher(_bus.GetMessageStream<HeartbeatMessage>(), _heartbeatPolicy), 
+                CreateHeartbeatWatcher(), 
                 new HeartbeatGenerator(_heartbeatPolicy, _bus)
              );
         }

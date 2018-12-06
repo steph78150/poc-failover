@@ -1,15 +1,19 @@
 using System;
+using System.Linq;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reactive.Linq;
 
 namespace poc_failover
 {
+
     public interface IHeartbeatWatcher : IDisposable
     {
         event EventHandler<HeartbeatMessage> NodeJoined;
 
         event EventHandler<HeartbeatMessage> NodeLeft;
+
+        int ActiveNodeCount {get;}
     }
 
     public class HeartbeatWatcher : IHeartbeatWatcher
@@ -21,6 +25,7 @@ namespace poc_failover
         public event EventHandler<HeartbeatMessage> NodeJoined;
         public event EventHandler<HeartbeatMessage> NodeLeft;
 
+
         public HeartbeatWatcher(IObservable<HeartbeatMessage> heartbeatStream, HeartbeatPolicy policy) {
             _knownHeartbeats = new ConcurrentDictionary<HeartbeatMessage, HeartbeatMessage>();
             _watching = new ConcurrentBag<IDisposable>();
@@ -31,6 +36,8 @@ namespace poc_failover
                 }
             });
         }
+
+        public int ActiveNodeCount => _knownHeartbeats.Keys.Select(h => h.CurrentIdentity).Distinct().Count();
 
         private void StartWatching(IObservable<HeartbeatMessage> heartbeatStream, HeartbeatMessage first, HeartbeatPolicy policy) {
            var disposable =  heartbeatStream

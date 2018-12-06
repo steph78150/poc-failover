@@ -33,7 +33,7 @@ namespace poc_failover
         private static Cluster CreateCluster(int activeCount, int passiveCount)
         {
             var factory = new NodeFactory();
-            var cluster = new Cluster();
+            var cluster = factory.CreateCluster();
 
             for (int i = 1; i <= activeCount; i++) 
             {

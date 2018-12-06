@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace poc_failover
 {
-    public class PassiveNode : Node, INode
+    public class PassiveNode : Node
     {
         private readonly PassiveNodeState _state;
 
@@ -21,6 +21,7 @@ namespace poc_failover
         public override void Stop() 
         {
             _state.StopBackuping();
+            _deadServersQueue.Clear();
         }
 
         protected override void OnNodeLeft(object sender, HeartbeatMessage msg)
