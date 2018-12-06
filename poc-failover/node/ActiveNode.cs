@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 
 namespace poc_failover
 {
@@ -11,6 +12,8 @@ namespace poc_failover
         private IDisposable _heartbeats = null;
 
         private string _backupServerName;
+
+        private Stopwatch _stopping = null;
 
         public ActiveNode(string serverName, IHeartbeatWatcher heartbeatWatcher, 
             IHeartbeatGenerator heartbeatGenerator) 
@@ -28,8 +31,8 @@ namespace poc_failover
 
             var msg = new HeartbeatMessage { Sender = RealServerName, CurrentIdentity = RealServerName};
             _heartbeats = _heartbeatGenerator.StartSendingHeartbearts(msg);
+            _stopping = null;
         }
-
       
         public override string CurrentIdentity => CurrentState ==  State.Stopped ? null : RealServerName;
 
@@ -46,10 +49,12 @@ namespace poc_failover
         {
             base.Dispose();
             StopHeartbeats();
+            _stopping = null;
         }
 
         public override void Stop()
         {
+            _stopping = Stopwatch.StartNew();
             if (CurrentState != State.Running)
             {
                 throw new InvalidOperationException("Node is already stopped");
@@ -65,7 +70,6 @@ namespace poc_failover
 
         protected override void OnNodeLeft(object sender, HeartbeatMessage msg)
         {
-            Console.Out.WriteLine($"{RealServerName} noticed that node {msg} has left the cluster");
             if (_backupServerName == msg.Sender && msg.CurrentIdentity == RealServerName) {
                 _backupServerName = null;
                 Console.Out.WriteLine($"Node {RealServerName} had no longer any backup");
@@ -74,10 +78,9 @@ namespace poc_failover
 
         protected override void OnNodeJoined(object sender, HeartbeatMessage message)
         {
-            Console.Out.WriteLine($"{RealServerName} noticed that node {message} has joined the cluster");
-            if (message.CurrentIdentity == RealServerName) {
+             if (message.CurrentIdentity == RealServerName) {
                  _backupServerName = message.Sender;
-                 Console.Out.WriteLine($"Node {RealServerName} knows that it is backuped by {_backupServerName} and can safely stop now");
+                 Console.Out.WriteLine($"Node {RealServerName} knows that it is backuped by {_backupServerName} and can safely stop now after having to wait for {_stopping.Elapsed.TotalMilliseconds} ms");
             }
         }
 

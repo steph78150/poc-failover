@@ -1,4 +1,6 @@
-﻿namespace poc_failover
+﻿using System;
+
+namespace poc_failover
 {
     public abstract class Node 
     {
@@ -31,11 +33,13 @@
         private void NodeLeft(object sender, HeartbeatMessage msg) 
         {
             if (msg.Sender == RealServerName) return;
+            Console.Out.WriteLine($"{RealServerName} noticed that node {msg} had left the cluster at {DateTime.Now.TimeOfDay}");
             OnNodeLeft(sender, msg);
         }
         private void NodeJoined(object sender, HeartbeatMessage msg) 
         {
             if (msg.Sender == RealServerName) return;
+            Console.Out.WriteLine($"{RealServerName} noticed that node {msg} had joined the cluster at {DateTime.Now.TimeOfDay}");
             OnNodeJoined(sender,msg );
         }
 

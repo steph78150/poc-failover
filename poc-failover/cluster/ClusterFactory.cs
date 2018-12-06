@@ -1,18 +1,20 @@
+using System;
 using System.Linq;
+using System.Reactive.Linq;
 
 namespace poc_failover
 {
-    public class NodeFactory 
+    public class ClusterFactory 
     {
         private MessageBus _bus;
         private HeartbeatPolicy _heartbeatPolicy;
-        private Randomizer _randomizer;
+        private NetworkRandomizer _randomizer;
 
-        public NodeFactory() 
+        public ClusterFactory() 
         {
-            _bus =  new MessageBus();
+              _randomizer = new NetworkRandomizer();
+            _bus =  new MessageBus(_randomizer);
             _heartbeatPolicy = new HeartbeatPolicy();
-            _randomizer = new Randomizer();
         }
 
         public Node CreateActiveNode(string serverId)
@@ -27,10 +29,9 @@ namespace poc_failover
             return new Cluster(CreateHeartbeatWatcher());
         }
 
-
         private HeartbeatWatcher CreateHeartbeatWatcher()
         {
-            return new HeartbeatWatcher(_bus.GetMessageStream<HeartbeatMessage>(), _heartbeatPolicy);
+            return new HeartbeatWatcher(_bus.GetMessageStream<HeartbeatMessage>().Delay(_randomizer.GetRandomDelay()), _heartbeatPolicy);
         }
 
         public Node CreatePassiveNode(string serverId) {

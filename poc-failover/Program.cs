@@ -8,7 +8,9 @@ namespace poc_failover
     {
         public static void Main(string[] args)
         {
-            Cluster cluster = CreateCluster(2, 1);
+            var (nbOfActive, nbOfPassive) = ParseCommandArgs(args);
+            Console.WriteLine($"Initializing a cluster of {nbOfActive + nbOfPassive} nodes of which {nbOfActive} are actives");
+            Cluster cluster = CreateCluster(nbOfActive, nbOfPassive);
 
             while (true)
             {
@@ -30,18 +32,30 @@ namespace poc_failover
             }
         }
 
+        private static (int nbOfActive, int nbOfPassive) ParseCommandArgs(string [] args) {
+            int nbOfActive = 2;
+            int nbOfPassive = 1;
+            if (args.Length > 0) {
+                Int32.TryParse(args[0], out nbOfActive);
+            }
+            if (args.Length > 1) {
+                Int32.TryParse(args[1], out nbOfPassive);
+            }
+            return (nbOfActive, nbOfPassive);
+        }
+
         private static Cluster CreateCluster(int activeCount, int passiveCount)
         {
-            var factory = new NodeFactory();
+            var factory = new ClusterFactory();
             var cluster = factory.CreateCluster();
 
             for (int i = 1; i <= activeCount; i++) 
             {
-               cluster.AddNode(factory.CreateActiveNode("server_" + i)); 
+               cluster.AddNode(factory.CreateActiveNode("srv_" + i)); 
             }
             for (int i = 1; i <= passiveCount; i++) 
             {
-               cluster.AddNode(factory.CreatePassiveNode("spare_" + i)); 
+               cluster.AddNode(factory.CreatePassiveNode("mulet_" + i)); 
             }
 
             return cluster;

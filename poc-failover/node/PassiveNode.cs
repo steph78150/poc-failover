@@ -26,7 +26,6 @@ namespace poc_failover
 
         protected override void OnNodeLeft(object sender, HeartbeatMessage msg)
         {
-            Console.Out.WriteLine($"{RealServerName} noticed that node {msg} has left the cluster");
             if (_state.TryStartBackuping(msg.Sender, RealServerName))
             {
                 Console.Out.WriteLine($"{RealServerName} will now act as backup for {msg.Sender}");
@@ -40,7 +39,6 @@ namespace poc_failover
     
         protected override void OnNodeJoined(object sender, HeartbeatMessage message)
         {
-            Console.Out.WriteLine($"{RealServerName} noticed that node {message} has joined the cluster");
             if (_state.TryStopBackuping(message.Sender))
             {
                 Console.Out.WriteLine($"Spare node {RealServerName} no longer need to backup {CurrentIdentity} because it is back");

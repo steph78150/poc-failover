@@ -1,10 +1,12 @@
 using System;
 
-public class Randomizer {
+public class NetworkRandomizer {
     private readonly Random _random = new Random();
 
-    public TimeSpan GetRandomDelay(TimeSpan maxDelay) { 
-        var milliseconds = _random.Next( (int) maxDelay.TotalMilliseconds);
-        return TimeSpan.FromMilliseconds(milliseconds);
+    public static readonly TimeSpan NetworkDelay = TimeSpan.FromMilliseconds(15);
+
+    public TimeSpan GetRandomDelay() { 
+        var milliseconds = _random.Next( (int) NetworkDelay.TotalMilliseconds);
+        return TimeSpan.FromMilliseconds(milliseconds) + NetworkDelay;
     }
 }
